@@ -2,8 +2,8 @@
 library(tidyverse)
 data("mtcars")
 mtcars -> motorcars
-
 str(motorcars)
+
 ## All dataset variables are NUMERIC
 motorcars <- rename(motorcars, Transmission = am)
 
@@ -32,10 +32,11 @@ plot2 + geom_point()
 #### If we want to do the 4 model plots we  do:   plot(lm_mpg_only)  ####
 
 
-## 1a. LINEAR model with ALL VARIABLES
+## 2. LINEAR model with ALL VARIABLES
 lm_mpg_all <- lm(mpg ~ . , data = motorcars)  
 summary(lm_mpg_all)
 ## Model only explains explains 87% of total variability: R2 = 0.87   / RSE = 2.65
+## BUT ....NO TIENE resultados clinically significant
 # HACER RESIDUAL PLOT #
 par(mfrow = c(1,4))
 plot(lm_mpg_all)
@@ -44,22 +45,21 @@ sumCoef_all <- summary(lm_mpg_all)$coefficients
 
 correlations <- cor(mtcars)
 
-## 2. Select variables that have higher correlation:  cyl, disp, hp & wt
+## 3. Select variables that have higher correlation:  cyl, disp, hp & wt
 lm_mpg_all_correlated <- lm(mpg ~ Transmission + cyl + disp + hp + wt, data = motorcars)
 summary(lm_mpg_all_correlated)
-## This 2nd model explains 86% of total variability.  And RSE (residual variation) is LOWER than 
-## for the 1st model.  RSE = 2,50
+## This 3rd model explains 86% of total variability.  And RSE (residual variation) is LOWER than 
+## for the 2nd model: RSE = 2,50
+## PERO....solo es clinically significant para WEIGHT
 # RESIDUAL PLOT ##
 par(mfrow = c(1,4))
 plot(lm_mpg_all_correlated)
 # Much better residual plot 
 
-anova(lm_mpg_only, lm_mpg_all_correlated)
-## Da muchisimo mejor ####
 
 
 ### SACAR ESTE, NO TIENE SENTIDO  ######################
-## 3. Model WITHOUT the TRANSMISSION
+## Model WITHOUT the TRANSMISSION
 lm_mpg_all_correlated_noTransm <- lm(mpg ~ + cyl + disp + hp + wt, data = motorcars)
 ## R2 = 85%  /   RSE = 2,51
 ### Not much of a difference with Model #2 -- Pero ademas, no TIENE SENTIDO SACAR la TRANSMISSION!!!
@@ -70,13 +70,19 @@ lm_mpg_all_correlated_noTransm <- lm(mpg ~ + cyl + disp + hp + wt, data = motorc
 ## el tipo de transmission que sea
 ## TRANSMISSION es INDEPENDIENTE de CYL y de DISP.  Por ende, TRANSMISSION INTERACTUA con HP y WT.
 ## Por ende:....
-lm_mpg_with_interaction <- lm(mpg ~ cyl + disp + hp*Transmission*wt, data = motorcars)
+lm_mpg_with_interaction <- lm(mpg ~ Transmission + Transmission:wt + cyl + disp + hp + wt, data = motorcars)
 summary(lm_mpg_with_interaction)
-## R2 = 90%  /  RSE = 2,27  ### Mejor todavia!! PEEEROOO....
-## Si hacemos un ANOVA de Model #2 vs. Model #4, no da estadisticamente significativo....
+## R2 = 88%  /  RSE = 2,31  ### Mejor todavia!! 
+## Y da estadisticamente significativo para Transmission y Transmission:wt
 
 
-## Asi que seguimos con Model #2   ############################
+anova(lm_mpg_only, lm_mpg_with_interaction, lm_mpg_all_correlated, lm_mpg_all)
+### After the ANOVA, we confirm that the best fit model is the one with the interaction terms for
+### weight.
+
+
+anova(lm_mpg_only, lm_mpg_all_correlated, lm_mpg_with_interaction, lm_mpg_all)
+
 If we only consider tranmission as a predictor of MPG, the difference between Automatic vs. Manual
 is that we can expect to obtain 7,xx  MPG with Manual Transmission.
 If we consider other variables than when included in our model of MPG consumption, result in a
