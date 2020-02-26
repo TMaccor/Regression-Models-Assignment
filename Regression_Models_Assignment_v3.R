@@ -43,6 +43,10 @@ plot(lm_mpg_all)
 sumCoef_all <- summary(lm_mpg_all)$coefficients
 (sumCoef_all[9,1] + c(-1, 1) * qt(.975, df = lm_mpg_all_correlated$df) * sumCoef_all[9, 2])
 
+
+print("Transmission =")
+int_Transmission
+
 correlations <- cor(mtcars)
 
 ## 3. Select variables that have higher correlation:  cyl, disp, hp & wt

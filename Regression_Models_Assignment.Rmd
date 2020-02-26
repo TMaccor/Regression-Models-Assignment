@@ -5,47 +5,44 @@ date: "25/2/2020"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 ## Executive Summary
 
-Motor Trend, the premier automobile industry magazine, once again delivers one of its special reports!:
+**"Motor Trend"**, the premier automobile industry magazine, once again delivers one of its special reports!
 
-This time, we analyse the relationship between Miles per Galon (MPG) in Automatic versus Manual transmission motor vehicles. 
-We reviewed an extensive dataset belonging to a collection of representative vehicles around the world, and a after running a series of models to fit the data, we have found that:
+This time we analyse the relationship between Miles per Galon (MPG) in Automatic versus Manual transmission motor vehicles. 
+We reviewed a comprehensive database of representative vehicles around the world, and a after running a series of models to fit the data, we conclude that:
 
 - Vechicles with Manual transmission deliver more MPG than the ones that have Automatic transmission.
-- The quantifiable difference is 11.06 more MPG for Manual transmission vehicles, but this quantity also needs to be adjusted by the vehicle's weight -the product of the car's weigth (pounds / 1000) times -3.64 needs to be substracted to 11.06 MPG, to obtain the actual difference in MPG, for auto & manual cars of the same weight).
+
+- The quantifiable difference is 11.06 more MPG for Manual transmission vehicles, ADJUSTED by the vehicle's weight (see details in "MODELLING" section of this report).
 
 
-## Exploratory Data Analysis on the dataset
+## Exploratory Data Analysis
 
-Loading the dataset & having a first glimpse:
-
-```{r}
-library(tidyverse)
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+library(ggplot2, quietly = TRUE)
+library(dplyr, quietly = TRUE, warn.conflicts = FALSE)
 data("mtcars")
 mtcars -> motorcars
-str(motorcars)
 ```
 
-All dataset variables are NUMERIC.
+
+The dataset has 32 vechicles and includes 11 associated variables. All dataset variables are NUMERIC.
 We rename the variable that containg the tranmission information, to "TRANSMISSION", for easy of understanding at follow up & in plots.
 
-Transmission = 0 equals an AUTOMATIC Transmision
+Transmission = 0 equals an AUTOMATIC Transmision  
 Transmission = 1 equals MANUAL Transmision
 
-We do the first exploratory & visualization plot (see Appendices, Plot 1), where we see a visual 
-difference of approximately 5 MPG better performance by MANUAL Tranmission automoviles (within this sample of vehicles).
+We first do an exploratory plot (see Appendices, Plot #1), where we see a visual difference of approximately 5 MPG better performance by MANUAL Transmission automoviles (corresponding only & specifically to the vehicles in the dataset).
 
-```{r}
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
 motorcars <- rename(motorcars, Transmission = am)
 motorcars$Transmission <- as.factor(motorcars$Transmission)
-
-plot1 <- ggplot(motorcars, aes(Transmission, mpg, fill=Transmission))
-plot1 + geom_boxplot() + scale_fill_discrete(name = "Transmission", labels = c("Automatic", "Manual"))
 ```
 
 ## Statistical Analysis 
@@ -57,29 +54,30 @@ t.test(motorcars$mpg ~ motorcars$Transmission)
 ```
 
 And we see there is a statistically significant difference between the means of these 2 groups (p = 0,001374).
-Manual Tranmission = 17.147 MPG
+Manual Tranmission = 17.147 MPG  
 Automatic = 24.392 MPG
 
 
-## MODELLING
+## Modelling
 
 We will try to find the best model that explains the data, and best quantifies the difference in MPG for these 2 vehicle POPULATIONS.
 
-# 1. Simplest model
+### 1. Simplest model
 We will firstly run a model that only uses the TRANMISSION to explain the data:
 
 ```{r}
 lm_mpg_only <- lm(mpg ~ Transmission, data = motorcars)  
-summary(lm_mpg_only)
+summary(lm_mpg_only)$coefficients
+print( c("R Squared =", summary(lm_mpg_only)$r.squared) )
 ```
 
 This model only explains explains 36% of total variability (R2 = 0.3598). In addition, the residuals plot (see Plot #2 in Appendices) shows a very clear pattern of aggregation along the X axis, which is not supposed to be.
 
-# 2. LINEAR model with ALL VARIABLES
+### 2. Model with ALL VARIABLES
 
 ```{r}
 lm_mpg_all <- lm(mpg ~ . , data = motorcars)  
-summary(lm_mpg_all)
+summary(lm_mpg_all)$coefficients
 ```
 
 This model is much better, it explains 87% of total variability: R2 = 0.87, and the RSE is lower (2.65) than for our 1st model. 
@@ -88,7 +86,10 @@ BUT....none of the model's coefficients are statistically significant. There's j
 If we run a correlation between all variables in the dataset:
 
 ```{r}
-correlations <- cor(motorcars)
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+correlations <- cor(mtcars)
+correlations[1, ]
 ```
 
 We can see that the variables most correlated with MPG are CYL (# of cilynders), DISP (Displacement), wt (WEIGHT) & HP (horsepower).  
@@ -100,11 +101,11 @@ Thus, our next model will only have these variables + TRANSMISSION type:
 lm_mpg_all_correlated <- lm(mpg ~ Transmission + cyl + disp + hp + wt, data = motorcars)
 ```
 
-This 3rd model explains 86% of total variability.  And RSE (residual variation) is LOWER than 
+This **3rd model** explains 86% of total variability.  And RSE (residual variation) is LOWER than 
 for the 2nd model: RSE = 2,50.
 BUT...the only statistically significant coefficient is the WEIGHT  (and TRANSMISSION is NOT)
 
-After researching some of our other sources, we see that most often automatic transmission vehicles are heavier that the ones with manual transmission (due to the characteristics of the transmission itself). Thus, the TRANSMISSION variable interacts with the WEIGHT variable (since if Automatic Transmission vehicle, its weight will most likely be heavier), thus we will run a 4th model including the INTERACTION TERM between Transmission & Weight: 
+After researching some of our other sources, we see that most often automatic transmission vehicles are heavier that the ones with manual transmission (due to the characteristics of the transmission itself). Thus, the TRANSMISSION variable interacts with the WEIGHT variable (since if Automatic Transmission vehicle, its weight will most likely be heavier), thus we will run a **4th model** including the INTERACTION TERM between Transmission & Weight: 
 
 
 ```{r}
@@ -112,41 +113,73 @@ lm_mpg_with_interaction <- lm(mpg ~ Transmission + Transmission:wt + cyl + disp 
 summary(lm_mpg_with_interaction)
 ```
 
-The result is a model with even better fit (R2 = 88%) and better residual fit (RSE = 2,31), PLUS is statistically significant for the "Transmission" & the "Transmission:wt" coefficients.
+The result is a model with even better fit (R2 = 88%) and better residual fit (RSE = 2,31), PLUS is statistically significant for the "Transmission" & the "Transmission:wt" coefficients. If we do the residuals plot, all seems adequate (no distinct patterns, see Plot #3)
 
-If we do the residuals plot, all seems adequate (no distinc patterns, see Plot #3)
+Finally, if we do an ANOVA test (see APPENDICES) the results tell us **we have found the best model** to explain data and obtain insights.
 
-Finally, if we do an ANOVA test, the results are tell us we have found the best model to explain data and obtain insights:
+**To summarise:**  
+If we only consider Transmission as the sole predictor of MPG, the difference between Automatic vs. Manual tranmission that we can expect to obtain is 7,24 MPG with Manual Transmission.
 
+With the more robust model (more accurate) selected, we can infer (for the ENTIRE POPULATIONS of cars with Manual vs. Automatic transmissions), that the increase in MPG when using Manual Transmission is 11.06, adjusted negatively by 3.64 times the car's weight (in pounds / 1000), and with the following 95% confidence intervals:
 
 
 ```{r}
-anova(lm_mpg_only, lm_mpg_with_interaction, lm_mpg_all_correlated, lm_mpg_all)
+sumCoef <- summary(lm_mpg_with_interaction)$coefficients
+int_Transmission <- (sumCoef[2,1] + c(-1, 1) * qt(.975, df = lm_mpg_with_interaction$df) * sumCoef[2, 2])
+int_weight <- (sumCoef[7,1] + c(-1, 1) * qt(.975, df = lm_mpg_with_interaction$df) * sumCoef[7, 2])
+writeLines("Transmission = ")
+int_Transmission
+writeLines("Weight = ")
+int_weight
 ```
-
-If we only consider tranmission as a predictor of MPG, the difference between Automatic vs. Manual
-is that we can expect to obtain 7,xx  MPG with Manual Transmission.
-If we consider other variables than when included in our model of MPG consumption, result in a
-more robust model (more accurate), then the increase in MPG when using manual is 2,XX
-
-## 95% Confidence interval para valores de MPG vs Auto/Manual:
-sumCoef_all_correlated <- summary(lm_mpg_all_correlated)$coefficients
-(sumCoef_all_correlated[2,1] + c(-1, 1) * qt(.975, df = lm_mpg_all_correlated$df) * sumCoef_all_correlated[2, 2])
-## Da -1.404573 y 4.517556  MPG para Transmission  
-
 
 LOGISTIC or POISSON models are not applicable in this case  --the outcome variable (MPG) is not
 binomial neither count data
 
-```{r}
 
+# APPENDICES
 
-
-```
-
-
+## PLOT #1 
 
 ```{r}
-lm_mpg_all_correlated <- lm(mpg ~ Transmission + cyl + disp + hp + wt, data = motorcars)
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+plot1 <- ggplot(motorcars, aes(Transmission, mpg, fill=Transmission))
+plot1 + geom_boxplot() + scale_fill_discrete(name = "Transmission", labels = c("Automatic", "Manual"))
 ```
 
+\pagebreak
+
+## PLOT #2 
+
+Residual plot.  
+Model: only Transmission as predictor
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+lm_mpg_only_res <- resid(lm_mpg_only)
+plot2 <- ggplot(motorcars, aes(x = Transmission, y = lm_mpg_only_res))
+plot2 + geom_point()
+```
+
+\pagebreak
+
+## PLOT #3 
+
+Residual plot of final model chosen
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+par(mfrow = c(2,2))
+plot(lm_mpg_with_interaction)
+```
+  
+  
+  
+## ANOVA for all models run
+
+```{r}
+anova(lm_mpg_only, lm_mpg_with_interaction, lm_mpg_all_correlated, lm_mpg_all)
+```
